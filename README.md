@@ -2,7 +2,67 @@
 
 An automotive blind-spot detection (BSD) research project based on FMCW radar signal processing, target tracking, and a proposed machine-learning threat assessment layer.
 
-> **Project status:** Research and implementation blueprint. This repository currently contains the project documentation and source research paper; a runnable radar-processing pipeline, trained model, and public dataset are not included yet.
+> **Project status:** Runnable computer-vision baseline. The supplied BSD dataset contains camera frames with YOLO annotations; radar signal processing remains a future sensor path.
+
+## Quick start
+
+The project uses the BSD dataset stored alongside this repository. Activate the existing virtual environment, install dependencies, and prepare a deterministic split:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python main.py prepare --source "..\..\archive (1)\BSD Dataset"
+```
+
+Train a small baseline detector:
+
+```powershell
+python main.py train --epochs 30
+```
+
+For a quick CPU smoke test, train on 5% of the dataset:
+
+```powershell
+python main.py train --epochs 1 --imgsz 320 --fraction 0.05 --name bsd-smoke
+```
+
+### Train in Google Colab
+
+Colab is recommended for full training because its GPU is considerably faster than a local CPU. In a new Colab notebook, select a GPU runtime, then run:
+
+```python
+%cd /content
+!git clone <YOUR_REPOSITORY_URL> ADAS-Blind-spot-detection
+%cd /content/ADAS-Blind-spot-detection
+!pip install -r requirements.txt
+```
+
+Place the BSD dataset in `/content/BSD Dataset` or mount Google Drive and update the source path. Prepare the split and train on the GPU:
+
+```python
+!python main.py prepare --source "/content/BSD Dataset" --destination "/content/ADAS-Blind-spot-detection/dataset/processed"
+!python main.py train --epochs 30 --imgsz 640 --batch 16 --workers 2 --device 0 --cache --name bsd-colab
+```
+
+For a faster initial check, use `--epochs 1 --imgsz 320 --fraction 0.05 --name bsd-colab-smoke`. The trained weights will be written to `runs/detect/bsd-colab/weights/best.pt`; download that file from the Colab file browser when training finishes. If the GPU runs out of memory, reduce `--batch` to `8` or `4` and remove `--cache` if RAM is limited.
+
+Evaluate a trained checkpoint on the held-out test split:
+
+```powershell
+python main.py evaluate --weights runs\detect\bsd-colab-2\weights\best.pt --split test
+```
+
+The command reports precision, recall, mAP@0.5, and mAP@0.5:0.95. Use `--split val` when tuning a model; keep `test` for the final report.
+
+The complete delivery checklist is in [TODO.md](TODO.md). The current repository can validate the camera detector; radar, vehicle warnings, and safety claims remain blocked until synchronized sensor and hardware data are available.
+
+Run inference with the trained weights:
+
+```powershell
+python main.py predict "..\..\archive (1)\BSD Dataset\images\frame(0).jpg" --weights runs\detect\bsd-baseline\weights\best.pt
+```
+
+The dataset preparation step collapses all nonnegative source annotation classes into the model's single class, `blind-spot-object`, and uses hard links for images when supported to avoid duplicating the image data.
 
 ## Overview
 
@@ -132,7 +192,7 @@ The planned implementation may use:
 - MATLAB for algorithm prototyping and comparison
 - FMCW radar hardware and CAN communication for vehicle integration
 
-No runtime dependencies or installation command are published yet because the application code has not been added to the repository.
+The runnable baseline uses Python, Ultralytics YOLO, and PyYAML. Install the dependencies with `pip install -r requirements.txt`, prepare the deterministic dataset split with `python main.py prepare`, then train, evaluate, or predict through the CLI above.
 
 ## Evaluation Plan
 
@@ -156,10 +216,10 @@ This is a research project and must not be used as a safety-critical driver-warn
 
 ## Roadmap
 
-1. Add a reproducible dataset download and preprocessing pipeline.
+1. Add a reproducible dataset download; preprocessing and YOLO evaluation are implemented.
 2. Implement the radar signal-processing and range-Doppler visualization stages.
 3. Add peak detection, angle estimation, and multi-target tracking.
-4. Establish the rule-based BSD baseline and automated evaluation metrics.
+4. Establish a radar rule-based BSD baseline; camera-detector evaluation metrics are implemented.
 5. Train and compare threat-classification models.
 6. Add time-to-collision estimation and target prioritization.
 7. Investigate camera-radar fusion for object classification.
