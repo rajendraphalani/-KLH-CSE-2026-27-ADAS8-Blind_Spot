@@ -1,5 +1,19 @@
 # Project Success Checklist
 
+## Status Review: 2026-09-17
+
+The runnable camera baseline is complete and the processed dataset currently contains
+5,352 images and 5,355 labels. The three extra labels indicate orphan annotations;
+the source annotation semantics, recording boundaries, label accuracy, and scene
+conditions still require inspection of the original dataset. No radar recordings,
+calibration, vehicle geometry, or hardware are present in this repository, so the
+radar/system items below cannot be completed or validated here.
+
+The remaining data/model items are intentionally left open until their required
+evidence is available. Existing training output alone is not sufficient to claim
+grouped-split validity, threshold tuning, model comparison, or reproducibility
+checksums.
+
 ## Completed: Reproducible Camera Baseline
 
 - [x] Prepare deterministic train/validation/test splits.

@@ -14,11 +14,13 @@ pip install -r requirements.txt
 python main.py prepare --source "..\..\archive (1)\BSD Dataset"
 ```
 
-Train a small baseline detector:
+Train the higher-resolution detector, tuned for the dataset's small objects:
 
 ```powershell
-python main.py train --epochs 30
+python main.py train
 ```
+
+The default training size is 960 px and the schedule is 150 epochs. For a GPU with limited memory, reduce the batch size or use `--imgsz 640`.
 
 For a quick CPU smoke test, train on 5% of the dataset:
 
@@ -26,9 +28,15 @@ For a quick CPU smoke test, train on 5% of the dataset:
 python main.py train --epochs 1 --imgsz 320 --fraction 0.05 --name bsd-smoke
 ```
 
-### Train in Google Colab
+### Train in Google Colab with a T4
 
-Colab is recommended for full training because its GPU is considerably faster than a local CPU. In a new Colab notebook, select a GPU runtime, then run:
+Colab is recommended for full training. Select **T4 GPU** in `Runtime > Change runtime type`, then confirm that the runtime sees it:
+
+```python
+!nvidia-smi
+```
+
+Clone the repository and install its dependencies:
 
 ```python
 %cd /content
@@ -37,14 +45,28 @@ Colab is recommended for full training because its GPU is considerably faster th
 !pip install -r requirements.txt
 ```
 
-Place the BSD dataset in `/content/BSD Dataset` or mount Google Drive and update the source path. Prepare the split and train on the GPU:
+If the dataset is on Google Drive, copy it to the local Colab disk first. Reading images from `/content` is substantially faster than reading every batch from Drive:
+
+```python
+from google.colab import drive
+drive.mount('/content/drive')
+!cp -r "/content/drive/MyDrive/BSD Dataset" "/content/BSD Dataset"
+```
+
+Prepare the split and run the T4 configuration:
 
 ```python
 !python main.py prepare --source "/content/BSD Dataset" --destination "/content/ADAS-Blind-spot-detection/dataset/processed"
-!python main.py train --epochs 30 --imgsz 640 --batch 16 --workers 2 --device 0 --cache --name bsd-colab
+!python main.py train --epochs 150 --imgsz 960 --batch 16 --workers 4 --device 0 --cache --optimizer AdamW --cos-lr --close-mosaic 20 --patience 35 --name bsd-t4-150 --seed 42
 ```
 
-For a faster initial check, use `--epochs 1 --imgsz 320 --fraction 0.05 --name bsd-colab-smoke`. The trained weights will be written to `runs/detect/bsd-colab/weights/best.pt`; download that file from the Colab file browser when training finishes. If the GPU runs out of memory, reduce `--batch` to `8` or `4` and remove `--cache` if RAM is limited.
+Ultralytics enables automatic mixed precision (AMP) by default, which uses the T4 efficiently. If the T4 runs out of GPU memory, reduce `--batch` from `32` to `16` or `8`; if Colab RAM is limited, remove `--cache`. For a quick initial check, use `--epochs 1 --imgsz 320 --fraction 0.05 --batch 32 --workers 4 --device 0 --name bsd-t4-smoke`.
+
+The best checkpoint is written to `runs/detect/bsd-t4-150/weights/best.pt`. Copy it to Drive before the runtime expires:
+
+```python
+!cp runs/detect/bsd-t4-150/weights/best.pt "/content/drive/MyDrive/bsd-t4-best.pt"
+```
 
 Evaluate a trained checkpoint on the held-out test split:
 

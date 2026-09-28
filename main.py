@@ -40,21 +40,29 @@ def build_parser() -> argparse.ArgumentParser:
     train = commands.add_parser("train", help="train the detector")
     train.add_argument("--data", type=Path, default=PROJECT_ROOT / "dataset.yaml")
     train.add_argument("--model", default="yolo11n.pt")
-    train.add_argument("--epochs", type=positive_int, default=30)
-    train.add_argument("--imgsz", type=positive_int, default=640)
+    train.add_argument("--epochs", type=positive_int, default=150)
+    train.add_argument("--imgsz", type=positive_int, default=960)
     train.add_argument("--workers", type=int, default=0)
     train.add_argument("--batch", type=positive_int, default=16)
     train.add_argument("--fraction", type=fraction, default=1.0)
     train.add_argument("--name", default="bsd-baseline")
     train.add_argument("--device", help="training device, for example 0 for the first Colab GPU")
     train.add_argument("--cache", action="store_true", help="cache images in RAM for faster training")
+    train.add_argument("--patience", type=int, default=35, help="epochs without improvement before stopping")
+    train.add_argument("--optimizer", choices=("auto", "SGD", "Adam", "AdamW"), default="auto")
+    train.add_argument("--cos-lr", action="store_true", help="use cosine learning-rate decay")
+    train.add_argument("--close-mosaic", type=int, default=15, help="disable mosaic augmentation for the final epochs")
+    train.add_argument("--seed", type=int, default=42)
+    train.add_argument("--lr0", type=float, default=0.01)
+    train.add_argument("--lrf", type=float, default=0.01)
+    train.add_argument("--weight-decay", type=float, default=0.0005)
     train.add_argument("--project", type=Path, default=PROJECT_ROOT / "runs" / "detect")
 
     evaluate = commands.add_parser("evaluate", help="evaluate a detector on a dataset split")
     evaluate.add_argument("--data", type=Path, default=PROJECT_ROOT / "dataset.yaml")
     evaluate.add_argument("--weights", type=Path, required=True)
     evaluate.add_argument("--split", choices=("val", "test"), default="test")
-    evaluate.add_argument("--imgsz", type=positive_int, default=640)
+    evaluate.add_argument("--imgsz", type=positive_int, default=960)
     evaluate.add_argument("--batch", type=positive_int, default=16)
     evaluate.add_argument("--workers", type=int, default=0)
     evaluate.add_argument("--device", help="evaluation device, for example 0 for the first GPU")
@@ -64,7 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
     predict.add_argument("source", type=Path)
     predict.add_argument("--weights", type=Path, required=True)
     predict.add_argument("--conf", type=fraction, default=0.35)
-    predict.add_argument("--imgsz", type=positive_int, default=640)
+    predict.add_argument("--imgsz", type=positive_int, default=960)
     predict.add_argument("--device", help="inference device, for example 0 for the first GPU")
     predict.add_argument("--project", type=Path, default=PROJECT_ROOT / "runs" / "predict")
     return parser
@@ -95,6 +103,14 @@ def main() -> None:
             "batch": args.batch,
             "fraction": args.fraction,
             "name": args.name,
+            "patience": args.patience,
+            "optimizer": args.optimizer,
+            "cos_lr": args.cos_lr,
+            "close_mosaic": args.close_mosaic,
+            "seed": args.seed,
+            "lr0": args.lr0,
+            "lrf": args.lrf,
+            "weight_decay": args.weight_decay,
             "cache": args.cache,
             "project": str(args.project),
         }
